@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 
 export default function AuthView({ onLogin }: { onLogin: () => void }) {
+  // NEW: Grab the backend URL from Vercel's environment variables
+  const API_URL = import.meta.env.VITE_API_URL || "";
+
   const [email, setEmail] = useState('murayanathan@gmail.com');
   const [password, setPassword] = useState('Johnsmith8!');
   const [error, setError] = useState('');
@@ -9,7 +12,8 @@ export default function AuthView({ onLogin }: { onLogin: () => void }) {
     e.preventDefault();
     setError('');
     try {
-      const res = await fetch('/api/auth/login', {
+      // UPDATED: Now it points to your dynamic API URL
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
