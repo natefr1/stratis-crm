@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import cors from "cors";
 
 export default function AuthView({ onLogin }: { onLogin: () => void }) {
   // NEW: Grab the backend URL from Vercel's environment variables

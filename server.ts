@@ -21,6 +21,7 @@ import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 import cookieParser from "cookie-parser";
 import Groq from "groq-sdk";
+import cors from "cors";
 
 dotenv.config();
 
@@ -29,6 +30,17 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3000;
+
+app.use(cors({
+  origin: [
+    "http://localhost:5173", // Allows your local testing to still work
+    "https://YOUR-ACTUAL-VERCEL-APP-URL.vercel.app" // ⚠️ REPLACE THIS with your live CRM link!
+  ],
+  credentials: true // This is REQUIRED because you are using jwt cookies!
+}));
+
+app.use(express.json());
+app.use(cookieParser());
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
