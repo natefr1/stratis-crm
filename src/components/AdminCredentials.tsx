@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Users, Lock, KeyRound, ShieldAlert, Trash2 } from "lucide-react";
 
 export default function AdminCredentials() {
+  // NEW: Grab the backend URL from Vercel's environment variables
+  const API_URL = import.meta.env.VITE_API_URL || "";
+
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -27,7 +30,8 @@ export default function AdminCredentials() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch("/api/admin/users");
+      // UPDATED FETCH CALL
+      const res = await fetch(`${API_URL}/api/admin/users`);
       if (!res.ok) throw new Error("Failed to fetch users");
       const data = await res.json();
       setUsers(data);
@@ -44,7 +48,8 @@ export default function AdminCredentials() {
     setError("");
     setSuccess("");
     try {
-      const res = await fetch("/api/admin/users", {
+      // UPDATED FETCH CALL
+      const res = await fetch(`${API_URL}/api/admin/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, companyName: businessName })
@@ -70,7 +75,8 @@ export default function AdminCredentials() {
     setError("");
     setSuccess("");
     try {
-      const res = await fetch(`/api/admin/users/${resetModalUserId}/reset-password`, {
+      // UPDATED FETCH CALL
+      const res = await fetch(`${API_URL}/api/admin/users/${resetModalUserId}/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newPassword })
@@ -92,7 +98,8 @@ export default function AdminCredentials() {
     setError("");
     setSuccess("");
     try {
-      const res = await fetch(`/api/admin/users/${revokeModalUserId}/revoke`, {
+      // UPDATED FETCH CALL
+      const res = await fetch(`${API_URL}/api/admin/users/${revokeModalUserId}/revoke`, {
         method: "POST"
       });
       if (!res.ok) {
@@ -113,7 +120,8 @@ export default function AdminCredentials() {
     setError("");
     setSuccess("");
     try {
-      const res = await fetch(`/api/admin/users/${deleteModalUserId}`, {
+      // UPDATED FETCH CALL
+      const res = await fetch(`${API_URL}/api/admin/users/${deleteModalUserId}`, {
         method: "DELETE"
       });
       if (!res.ok) {
