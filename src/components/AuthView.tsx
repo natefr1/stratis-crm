@@ -1,21 +1,20 @@
 import React, { useState } from 'react';
-import cors from "cors";
 
 export default function AuthView({ onLogin }: { onLogin: () => void }) {
-  // NEW: Grab the backend URL from Vercel's environment variables
   const API_URL = import.meta.env.VITE_API_URL || "";
 
-  const [email, setEmail] = useState('murayanathan@gmail.com');
-  const [password, setPassword] = useState('Johnsmith8!');
+  // FIXED: Removed the hardcoded login info!
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmitLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     try {
-      // UPDATED: Now it points to your dynamic API URL
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
+        credentials: 'include', // 👈 THE MAGIC KEY: Tells browser to save the cookie
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
@@ -33,15 +32,6 @@ export default function AuthView({ onLogin }: { onLogin: () => void }) {
 
   const getFriendlyError = (msg: string) => {
     if (!msg) return "";
-    if (msg.includes("Authentication failed against the database server") || msg.includes("credentials") || msg.includes("postgres")) {
-      return "⚠️ Database Connection Error:\nThe provided database credentials in DATABASE_URL are incorrect. Please ensure the username, password, host, and port in your environment variables are valid Supabase PostgreSQL credentials.";
-    }
-    if (msg.includes("Can't reach database server") || msg.includes("ETIMEDOUT") || msg.includes("ECONNREFUSED") || msg.includes("reach")) {
-      return "⚠️ Database Reachability Error:\nCannot reach the database server. Please make sure your Supabase/PostgreSQL instance is active, and your DATABASE_URL environment variable is correct.";
-    }
-    if (msg.includes("does not exist") || msg.includes("relation") || msg.includes("table")) {
-      return "⚠️ Database Migration Error:\nThe database is connected, but the required tables do not exist. Please run 'npx prisma db push' inside your terminal to push the database schema.";
-    }
     return msg;
   };
 
@@ -50,7 +40,7 @@ export default function AuthView({ onLogin }: { onLogin: () => void }) {
       <div className="bg-white p-8 rounded-2xl w-full max-w-md shadow-2xl">
         <h2 className="text-2xl font-bold mb-6 text-center text-slate-800">Welcome Back</h2>
         {error && (
-          <div className="bg-red-50 text-red-700 p-3.5 rounded-xl mb-4 text-xs font-semibold border border-red-200 whitespace-pre-line">
+          <div className="bg-red-50 text-red-700 p-3.5 rounded-xl mb-4 text-xs font-semibold border border-red-200">
             {getFriendlyError(error)}
           </div>
         )}
@@ -75,10 +65,7 @@ export default function AuthView({ onLogin }: { onLogin: () => void }) {
               required 
             />
           </div>
-          <button 
-            type="submit" 
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-lg transition-colors cursor-pointer"
-          >
+          <button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-lg transition-colors cursor-pointer">
             Sign In
           </button>
         </form>

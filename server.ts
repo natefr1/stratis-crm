@@ -215,7 +215,7 @@ app.post("/api/auth/register", async (req, res) => {
     });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
-    res.cookie("token", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
+    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
     res.json({ user });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

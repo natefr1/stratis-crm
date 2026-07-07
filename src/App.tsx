@@ -105,13 +105,12 @@ export default function App() {
 
   const checkAuth = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/auth/me`);
+      const res = await fetch(`${API_URL}/api/auth/me`, { credentials: "include" }); 
       if (res.ok) {
         const data = await res.json();
         setCurrentUser(data.user);
         setIsAuthenticated(true);
         
-        // 👇 FORCE THE UI TO START ON THE DASHBOARD
         setActiveTab("dashboard"); 
 
         if (data.user?.role === 'SUPER_ADMIN') {
