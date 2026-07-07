@@ -15,6 +15,9 @@ import InspectorView from "./components/views/InspectorView";
 import { Lead, RoofingCompany, Transaction, DashboardStats, AdminDashboardStats } from "./types";
 
 export default function App() {
+  // Global API URL for all fetch calls
+  const API_URL = import.meta.env.VITE_API_URL || "";
+
   // Auth State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -66,20 +69,20 @@ export default function App() {
   // Data Fetching
   const fetchData = async () => {
     try {
-      const companyRes = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/company");
+      const companyRes = await fetch(`${API_URL}/api/company`);
       if (companyRes.ok) setCompany(await companyRes.json());
 
-      const leadsRes = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/leads");
+      const leadsRes = await fetch(`${API_URL}/api/leads`);
       if (leadsRes.ok) {
         const data = await leadsRes.json();
         setLeads(data);
         if (data.length > 0 && !selectedLeadId) setSelectedLeadId(data[0].id);
       }
 
-      const txRes = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/transactions");
+      const txRes = await fetch(`${API_URL}/api/transactions`);
       if (txRes.ok) setTransactions(await txRes.json());
 
-      const statsRes = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/stats");
+      const statsRes = await fetch(`${API_URL}/api/stats`);
       if (statsRes.ok) setStats(await statsRes.json());
     } catch (err) {
       console.error("Error retrieving dashboard state:", err);
@@ -90,10 +93,10 @@ export default function App() {
   const fetchAdminData = async () => {
     try {
       const headers = { "x-admin-role": adminRole };
-      const adminRes = await fetch("/admin/dashboard-stats", { headers });
+      const adminRes = await fetch(`${API_URL}/admin/dashboard-stats`, { headers });
       if (adminRes.ok) setAdminStats(await adminRes.json());
 
-      const logsRes = await fetch("/admin/audit-logs", { headers });
+      const logsRes = await fetch(`${API_URL}/admin/audit-logs`, { headers });
       if (logsRes.ok) setAdminLogs(await logsRes.json());
     } catch (err) {
       console.error("Error retrieving platform metrics:", err);
@@ -102,7 +105,7 @@ export default function App() {
 
   const checkAuth = async () => {
     try {
-      const res = await fetch('/api/auth/me');
+      const res = await fetch(`${API_URL}/api/auth/me`);
       if (res.ok) {
         const data = await res.json();
         setCurrentUser(data.user);
@@ -128,7 +131,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch(`${API_URL}/api/auth/logout`, { method: 'POST' });
       setIsAuthenticated(false);
       setCurrentUser(null);
       setAdminRole("ROOFER_USER");
@@ -168,7 +171,7 @@ export default function App() {
   // --- MISSING CASHOUT OVERRIDE RESTORED ---
   const executeCashoutOverride = async () => {
     try {
-      const res = await fetch("/admin/cashout", {
+      const res = await fetch(`${API_URL}/admin/cashout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -193,7 +196,7 @@ export default function App() {
 
     setIsCreatingInbound(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/leads", {
+      const res = await fetch(`${API_URL}/api/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -207,7 +210,7 @@ export default function App() {
 
       if (res.ok) {
         const created = await res.json();
-        const chatRes = await fetch(`/api/leads/${created.id}/chat`, {
+        const chatRes = await fetch(`${API_URL}/api/leads/${created.id}/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: newHomeownerMsg }),
@@ -239,7 +242,7 @@ export default function App() {
     setChatLoading(true);
 
     try {
-      const response = await fetch(`/api/leads/${selectedLeadId}/chat`, {
+      const response = await fetch(`${API_URL}/api/leads/${selectedLeadId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: userText }),
@@ -264,7 +267,7 @@ export default function App() {
   const updateLeadStatus = async (status: Lead["status"]) => {
     if (!selectedLeadId) return;
     try {
-      const res = await fetch(`/api/leads/${selectedLeadId}/status`, {
+      const res = await fetch(`${API_URL}/api/leads/${selectedLeadId}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -282,7 +285,7 @@ export default function App() {
   const completeSchedulerBooking = async () => {
     if (!selectedLeadId || !selectedBookingTime) return;
     try {
-      const res = await fetch(`/api/leads/${selectedLeadId}/book`, {
+      const res = await fetch(`${API_URL}/api/leads/${selectedLeadId}/book`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: selectedBookingTime }),
