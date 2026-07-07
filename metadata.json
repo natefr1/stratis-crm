@@ -1,0 +1,8 @@
+{
+  "name": "Stratis",
+  "description": "Comprehensive SaaS middleware platform for local roofing companies, featuring AI lead qualification, CRM/calendar booking, and Stripe Connect ACH payment routing with automatic fee splitting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

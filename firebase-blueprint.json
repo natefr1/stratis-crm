@@ -1,0 +1,187 @@
+{
+  "entities": {
+    "RoofingCompany": {
+      "title": "Roofing Company Profile",
+      "description": "Details about a roofing contractor signed up on the SaaS platform",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier matching the user's Auth credential"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Prime notification and billing contact email"
+        },
+        "companyName": {
+          "type": "string",
+          "description": "Legal business name of the roofing company"
+        },
+        "stripeConnectId": {
+          "type": "string",
+          "description": "Stripe Connect Express Account identifier for ACH payouts"
+        },
+        "stripeStatus": {
+          "type": "string",
+          "enum": ["active", "pending", "none"],
+          "description": "Payout channel status for ACH receipts"
+        },
+        "twilioPhoneNumber": {
+          "type": "string",
+          "description": "Dedicated local Houston phone number assigned for SMS gateway"
+        },
+        "calendarConnected": {
+          "type": "boolean",
+          "description": "Flag representing connection status with Google Calendar or native CRM"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modification timestamp"
+        }
+      },
+      "required": ["id", "email", "companyName", "stripeConnectId", "stripeStatus", "twilioPhoneNumber", "calendarConnected", "createdAt", "updatedAt"]
+    },
+    "Lead": {
+      "title": "Homeowner Lead",
+      "description": "A lead customer captured via SMS, Instagram, or Web widget, conversed and qualified by Sarah AI",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique lead identifier"
+        },
+        "rooferId": {
+          "type": "string",
+          "description": "Reference ID to foreign RoofingCompany"
+        },
+        "homeownerName": {
+          "type": "string",
+          "description": "Full name of the homeowner"
+        },
+        "homeownerPhone": {
+          "type": "string",
+          "description": "Homeowner telephone contact number"
+        },
+        "homeownerChannel": {
+          "type": "string",
+          "enum": ["sms", "instagram", "web"],
+          "description": "Gateway source channel of conversation"
+        },
+        "homeownerUsername": {
+          "type": "string",
+          "description": "Instagram or social media profile handle if originating via Meta API"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["new", "conversing", "qualified", "scheduled", "won", "lost"],
+          "description": "The sales stages of Sarah's qualification funnel"
+        },
+        "neighborhood": {
+          "type": "string",
+          "description": "Homeowner location neighborhood in Houston (e.g. Heights, Memorial)"
+        },
+        "bookingTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Booked appointment slot in UTC format"
+        },
+        "transcript": {
+          "type": "array",
+          "description": "Serialized message stream history between homeowner and Sarah AI"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Capture timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last qualification touchpoint timestamp"
+        }
+      },
+      "required": ["id", "rooferId", "homeownerName", "homeownerPhone", "homeownerChannel", "status", "createdAt", "updatedAt"]
+    },
+    "Transaction": {
+      "title": "Smart Invoice Transaction",
+      "description": "ACH transfer details generated upon winning a lead, enforcing the 2% administration skim rule",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique transaction record identifier"
+        },
+        "rooferId": {
+          "type": "string",
+          "description": "Reference ID to foreign RoofingCompany"
+        },
+        "leadId": {
+          "type": "string",
+          "description": "Reference ID to the won Lead"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Total customer invoice transfer amount (USD)"
+        },
+        "platformFee": {
+          "type": "number",
+          "description": "Calculated 2% technology and platform administration fee skimmed from payout"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "paid", "failed"],
+          "description": "Transfer states of the ACH billing loop"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["ach", "card"],
+          "description": "Method of settlement (forced ACH for invoices > $2000)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Job summary description (e.g. Ridge Vent repair)"
+        },
+        "payerRouting": {
+          "type": "string",
+          "description": "Masked ACH routing transit number"
+        },
+        "payerAccount": {
+          "type": "string",
+          "description": "Masked ACH account number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Invoice compilation date"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last payment settlement touchpoint"
+        }
+      },
+      "required": ["id", "rooferId", "leadId", "amount", "platformFee", "status", "paymentMethod", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/roofing_companies/{companyId}": {
+      "schema": "$.entities.RoofingCompany",
+      "description": "Details of the subscribed roofing company contractor"
+    },
+    "/leads/{leadId}": {
+      "schema": "$.entities.Lead",
+      "description": "Funnel capture entries and qualifying transcripts managed by Sarah AI"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "$.entities.Transaction",
+      "description": "Invoice settlements and 2% application fees"
+    }
+  }
+}

@@ -1,0 +1,135 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ----------------------------------------
+    // GLOBAL HELPERS
+    // ----------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // ----------------------------------------
+    // ENTITY VALIDATION HELPERS
+    // ----------------------------------------
+
+    function isValidRoofingCompany(data) {
+      return data.keys().hasAll(['id', 'email', 'companyName', 'stripeConnectId', 'stripeStatus', 'twilioPhoneNumber', 'calendarConnected', 'createdAt', 'updatedAt'])
+        && data.keys().size() == 9
+        && data.id is string && data.id.size() <= 128
+        && data.email is string && data.email.size() <= 256
+        && data.companyName is string && data.companyName.size() <= 256
+        && data.stripeConnectId is string && data.stripeConnectId.size() <= 128
+        && data.stripeStatus in ['active', 'pending', 'none']
+        && data.twilioPhoneNumber is string && data.twilioPhoneNumber.size() <= 32
+        && data.calendarConnected is bool;
+    }
+
+    function isValidLead(data) {
+      return data.keys().hasAll(['id', 'rooferId', 'homeownerName', 'homeownerPhone', 'homeownerChannel', 'status', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.rooferId is string && data.rooferId.size() <= 128
+        && data.homeownerName is string && data.homeownerName.size() <= 256
+        && data.homeownerPhone is string && data.homeownerPhone.size() <= 32
+        && data.homeownerChannel in ['sms', 'instagram', 'web']
+        && data.status in ['new', 'conversing', 'qualified', 'scheduled', 'won', 'lost']
+        // Check optional elements if they are present
+        && (!data.keys().hasAny(['homeownerUsername']) || data.homeownerUsername is string && data.homeownerUsername.size() <= 128)
+        && (!data.keys().hasAny(['neighborhood']) || data.neighborhood is string && data.neighborhood.size() <= 128)
+        && (!data.keys().hasAny(['bookingTime']) || data.bookingTime is string)
+        && (!data.keys().hasAny(['transcript']) || data.transcript is list);
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['id', 'rooferId', 'leadId', 'amount', 'platformFee', 'status', 'paymentMethod', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.rooferId is string && data.rooferId.size() <= 128
+        && data.leadId is string && data.leadId.size() <= 128
+        && data.amount is number && data.amount >= 0
+        && data.platformFee is number && data.platformFee >= 0
+        && data.status in ['pending', 'paid', 'failed']
+        && data.paymentMethod in ['ach', 'card']
+        && (!data.keys().hasAny(['description']) || data.description is string && data.description.size() <= 1024)
+        && (!data.keys().hasAny(['payerRouting']) || data.payerRouting is string && data.payerRouting.size() <= 16)
+        && (!data.keys().hasAny(['payerAccount']) || data.payerAccount is string && data.payerAccount.size() <= 16);
+    }
+
+    // ----------------------------------------
+    // COLLECTION PATH RULE DEFINITIONS
+    // ----------------------------------------
+
+    // 1. Roofing Companies (Roofer Profiles)
+    match /roofing_companies/{companyId} {
+      allow get: if isSignedIn() && isOwner(companyId);
+      allow create: if isSignedIn() && isOwner(companyId) && isValidRoofingCompany(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && isOwner(companyId) && isValidRoofingCompany(incoming()) 
+                     && incoming().createdAt == existing().createdAt
+                     && incoming().updatedAt == request.time
+                     // Limit what is modifiable via client (preventing manual Stripe Connect ID bypass)
+                     && incoming().stripeConnectId == existing().stripeConnectId;
+      allow delete: if false; // Profiles are immortal
+    }
+
+    // 2. Leads collection
+    match /leads/{leadId} {
+      allow get: if isSignedIn() && (existing().rooferId == request.auth.uid);
+      allow list: if isSignedIn() && (resource.data.rooferId == request.auth.uid);
+      
+      allow create: if isSignedIn() && (incoming().rooferId == request.auth.uid) 
+                     && isValidLead(incoming()) 
+                     && incoming().createdAt == request.time;
+
+      allow update: if isSignedIn() && (existing().rooferId == request.auth.uid) 
+                     && incoming().rooferId == existing().rooferId
+                     && isValidLead(incoming())
+                     && incoming().createdAt == existing().createdAt
+                     && incoming().updatedAt == request.time;
+                     
+      allow delete: if isSignedIn() && (existing().rooferId == request.auth.uid);
+    }
+
+    // 3. Transactions / Invoices collection
+    match /transactions/{transactionId} {
+      allow get: if isSignedIn() && (existing().rooferId == request.auth.uid);
+      allow list: if isSignedIn() && (resource.data.rooferId == request.auth.uid);
+      
+      allow create: if isSignedIn() && (incoming().rooferId == request.auth.uid) 
+                     && isValidTransaction(incoming()) 
+                     && incoming().createdAt == request.time;
+
+      allow update: if isSignedIn() && (existing().rooferId == request.auth.uid)
+                     && incoming().rooferId == existing().rooferId
+                     && incoming().leadId == existing().leadId
+                     && isValidTransaction(incoming())
+                     && incoming().createdAt == existing().createdAt
+                     && incoming().updatedAt == request.time;
+                     
+      allow delete: if false; // Invoices/transactions are immutable audit lines
+    }
+  }
+}

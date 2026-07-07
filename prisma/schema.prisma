@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  ROOFER_USER
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(TENANT_ADMIN)
+  isActive  Boolean  @default(true)
+  tenantId  String?  // <--- WE ADDED THIS SO USERS CAN BELONG TO A COMPANY
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tenant {
+  id                String   @id @default(uuid())
+  companyName       String
+  physicalAddress   String?
+  twilioPhoneNumber String?
+  stripeConnectId   String?
+  stripeStatus      String   @default("pending")
+  calendarConnected Boolean  @default(false)
+  users             User[]   // <--- THIS IS NOW AN ARRAY (ONE-TO-MANY)
+  leads             Lead[]
+  transactions      Transaction[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Lead {
+  id               String    @id @default(uuid())
+  tenantId         String
+  tenant           Tenant    @relation(fields: [tenantId], references: [id])
+  homeownerName    String
+  homeownerPhone   String
+  homeownerChannel String    // 'sms', 'instagram'
+  status           String    @default("new")
+  neighborhood     String?
+  bookingTime      DateTime?
+  messages         Message[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  sender    String   // 'homeowner', 'assistant'
+  text      String
+  timestamp DateTime @default(now())
+}
+
+model Transaction {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  amount          Float
+  platformFee     Float
+  status          String   @default("pending") // 'pending', 'paid'
+  paymentMechanic String   // 'ach', 'card'
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
