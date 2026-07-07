@@ -66,20 +66,20 @@ export default function App() {
   // Data Fetching
   const fetchData = async () => {
     try {
-      const companyRes = await fetch("/api/company");
+      const companyRes = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/company");
       if (companyRes.ok) setCompany(await companyRes.json());
 
-      const leadsRes = await fetch("/api/leads");
+      const leadsRes = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/leads");
       if (leadsRes.ok) {
         const data = await leadsRes.json();
         setLeads(data);
         if (data.length > 0 && !selectedLeadId) setSelectedLeadId(data[0].id);
       }
 
-      const txRes = await fetch("/api/transactions");
+      const txRes = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/transactions");
       if (txRes.ok) setTransactions(await txRes.json());
 
-      const statsRes = await fetch("/api/stats");
+      const statsRes = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/stats");
       if (statsRes.ok) setStats(await statsRes.json());
     } catch (err) {
       console.error("Error retrieving dashboard state:", err);
@@ -193,7 +193,7 @@ export default function App() {
 
     setIsCreatingInbound(true);
     try {
-      const res = await fetch("/api/leads", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

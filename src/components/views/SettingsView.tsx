@@ -42,7 +42,7 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
 
   const fetchTeamMembers = async () => {
     try {
-      const res = await fetch("/api/tenant/users");
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/tenant/users");
       if (res.ok) {
         setTeamMembers(await res.json());
       } else {
@@ -57,7 +57,7 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
     e.preventDefault();
     setSettingsSaving(true);
     try {
-      const res = await fetch("/api/tenant/settings", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/tenant/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyName: settingsCompanyName, twilioPhoneNumber: settingsPhone, physicalAddress: settingsAddress })
@@ -74,7 +74,7 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
     setIsAddingUser(true);
     
     try {
-      const res = await fetch("/api/tenant/users", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/tenant/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: newEmpEmail, password: newEmpPassword, role: newEmpRole })
