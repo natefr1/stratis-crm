@@ -8,6 +8,9 @@ interface SettingsViewProps {
 }
 
 export default function SettingsView({ company, setCompany, currentUser }: SettingsViewProps) {
+  // NEW: Grab the backend URL from Vercel's environment variables
+  const API_URL = import.meta.env.VITE_API_URL || "";
+
   const [activeTab, setActiveTab] = useState<"general" | "team" | "email" | "integrations">("general");
 
   // Company Profile State
@@ -42,7 +45,8 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
 
   const fetchTeamMembers = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/tenant/users");
+      // FIXED FETCH
+      const res = await fetch(`${API_URL}/api/tenant/users`);
       if (res.ok) {
         setTeamMembers(await res.json());
       } else {
@@ -57,7 +61,8 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
     e.preventDefault();
     setSettingsSaving(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/tenant/settings", {
+      // FIXED FETCH
+      const res = await fetch(`${API_URL}/api/tenant/settings`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyName: settingsCompanyName, twilioPhoneNumber: settingsPhone, physicalAddress: settingsAddress })
@@ -74,7 +79,8 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
     setIsAddingUser(true);
     
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/tenant/users", {
+      // FIXED FETCH
+      const res = await fetch(`${API_URL}/api/tenant/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: newEmpEmail, password: newEmpPassword, role: newEmpRole })
@@ -99,7 +105,8 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
     setTeamMembers(teamMembers.map(m => m.id === userId ? { ...m, role: newRole } : m));
-    await fetch(`/api/tenant/users/${userId}/role`, {
+    // FIXED FETCH
+    await fetch(`${API_URL}/api/tenant/users/${userId}/role`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role: newRole })
@@ -108,7 +115,8 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
 
   const handleResetPassword = async (userId: string) => {
     if (!newPasswordInput) return;
-    await fetch(`/api/tenant/users/${userId}/password`, {
+    // FIXED FETCH
+    await fetch(`${API_URL}/api/tenant/users/${userId}/password`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ newPassword: newPasswordInput })
@@ -121,7 +129,8 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
   const handleRemoveEmployee = async (userId: string) => {
     if(!window.confirm("Are you sure you want to revoke access for this employee?")) return;
     setTeamMembers(teamMembers.filter(m => m.id !== userId));
-    await fetch(`/api/tenant/users/${userId}`, { method: "DELETE" });
+    // FIXED FETCH
+    await fetch(`${API_URL}/api/tenant/users/${userId}`, { method: "DELETE" });
   };
 
   return (
