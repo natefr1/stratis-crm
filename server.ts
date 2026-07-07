@@ -34,7 +34,7 @@ const PORT = 3000;
 app.use(cors({
   origin: [
     "http://localhost:5173", // Allows your local testing to still work
-    "https://YOUR-ACTUAL-VERCEL-APP-URL.vercel.app" // ⚠️ REPLACE THIS with your live CRM link!
+    "https://stratis-crm.vercel.app" // ⚠️ REPLACE THIS with your live CRM link!
   ],
   credentials: true // This is REQUIRED because you are using jwt cookies!
 }));
