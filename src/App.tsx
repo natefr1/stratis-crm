@@ -103,14 +103,26 @@ export default function App() {
     }
   };
 
-  const checkAuth = async () => {
+const checkAuth = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/auth/me`, { credentials: "include" }); 
+      // Grab the token from storage
+      const token = localStorage.getItem("stratis_token");
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Send the token in the Headers
+      const res = await fetch(`${API_URL}/api/auth/me`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      
       if (res.ok) {
         const data = await res.json();
         setCurrentUser(data.user);
-        setIsAuthenticated(true);
-        
+        setIsAuthenticated(true); 
         setActiveTab("dashboard"); 
 
         if (data.user?.role === 'SUPER_ADMIN') {

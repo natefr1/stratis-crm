@@ -8,21 +8,24 @@ export default function AuthView({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmitLogin = async (e: React.FormEvent) => {
+const handleSubmitLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     try {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
-        credentials: 'include', // 👈 THE MAGIC KEY: Tells browser to save the cookie
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
       
+      const data = await res.json();
+      
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || 'Authentication failed');
       }
+      
+      // Saving the token to the local storage
+      localStorage.setItem("stratis_token", data.token);
       
       onLogin();
     } catch (err: any) {

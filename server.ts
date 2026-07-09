@@ -102,8 +102,11 @@ const JWT_SECRET = process.env.JWT_SECRET || "fallback_super_secret";
 // Auth Middleware
 const requireAuth = async (req: any, res: any, next: any) => {
   try {
-    const token = req.cookies.token;
-    if (!token) return res.status(401).json({ error: "Unauthorized" });
+    // Look for the token in the Authorization header instead of cookies
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(" ")[1]; 
+    
+    if (!token) return res.status(401).json({ error: "Unauthorized - No Token" });
     
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const user = await prisma.user.findUnique({ 
@@ -215,8 +218,8 @@ app.post("/api/auth/register", async (req, res) => {
     });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
-    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
-    res.json({ user });
+    
+    res.json({ user, token });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -251,9 +254,8 @@ app.post("/api/auth/login", async (req, res) => {
     if (!isValid) return res.status(401).json({ error: "the password is incorrect" });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "7d" });
-    res.cookie("token", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
 
-    res.json({ user });
+    res.json({ user, token });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
