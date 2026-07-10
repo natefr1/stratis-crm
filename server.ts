@@ -22,6 +22,7 @@ import nodemailer from "nodemailer";
 import cookieParser from "cookie-parser";
 import Groq from "groq-sdk";
 import cors from "cors";
+import twilio from "twilio";
 
 dotenv.config();
 
@@ -30,6 +31,11 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3000;
+
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID, 
+  process.env.TWILIO_AUTH_TOKEN
+);
 
 app.use(cors({
   origin: [
@@ -568,23 +574,55 @@ app.put("/api/leads/:id/status", requireAuth, async (req: any, res) => {
 // -------------------------------------------------------------
 // GROQ "LIMITLESS" AI CHAT ENDPOINT
 // -------------------------------------------------------------
-app.post("/api/leads/:id/chat", requireAuth, async (req: any, res) => {
+app.post("/api/leads/:id/chat", requireAuth, async (req: any, res: any) => {
   const { id } = req.params;
-  const { text } = req.body; 
+  const { text, isHuman } = req.body; 
 
   try {
     const lead = await prisma.lead.findUnique({ 
       where: { id, tenantId: req.user.tenantId },
       include: { messages: { orderBy: { timestamp: "asc" } } }
     });
+    
     if (!lead) return res.status(404).json({ error: "Lead not found" });
 
+    // If HUMAN ADMIN IS SENDING MESSAGE
+    if (isHuman) {
+      // 1. Save the admin's message to the database
+      await prisma.message.create({
+        data: { leadId: id, sender: "admin", text: text }
+      });
+
+      // 2. Text the homeowner from your Twilio Number
+      try {
+        await twilioClient.messages.create({
+          body: text,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: lead.homeownerPhone
+        });
+        console.log(`[Twilio] Sent Admin SMS to ${lead.homeownerPhone}`);
+      } catch (smsError) {
+        console.error("[Twilio Error - Admin SMS]:", smsError);
+      }
+
+      // 3. Return the updated chat
+      const updatedLead = await prisma.lead.findUnique({
+        where: { id },
+        include: { messages: { orderBy: { timestamp: "asc" } } }
+      });
+      return res.json({ ...updatedLead, transcript: (updatedLead as any).messages });
+    }
+
+    // If Customer Messages and Sarah has to reply
+  
+    
+    // 1. Save the homeowner's incoming message
     await prisma.message.create({
       data: { leadId: id, sender: "homeowner", text: text }
     });
 
     const conversationHistory = (lead as any).messages.map((msg: any) => ({
-      role: msg.sender === "sarah" ? "assistant" : "user",
+      role: msg.sender === "sarah" ? "assistant" : msg.sender === "admin" ? "assistant" : "user",
       content: msg.text
     }));
     conversationHistory.push({ role: "user", content: text });
@@ -596,7 +634,6 @@ app.post("/api/leads/:id/chat", requireAuth, async (req: any, res) => {
           model: "llama-3.3-70b-versatile",
           messages: [
             { 
-              // 👇 THE UPGRADED, STRICT SYSTEM PROMPT
               role: "system", 
               content: `You are Sarah, the intake coordinator for ${req.user.tenant?.companyName || "our roofing company"}. 
               Your strict goal is to schedule an inspection. 
@@ -608,7 +645,7 @@ app.post("/api/leads/:id/chat", requireAuth, async (req: any, res) => {
             },
             ...conversationHistory
           ],
-          temperature: 0.5, // Lowered temperature makes her more strict and less likely to break rules
+          temperature: 0.5, 
           max_tokens: 1024,
         });
         aiResponse = completion.choices[0]?.message?.content || aiResponse;
@@ -617,22 +654,34 @@ app.post("/api/leads/:id/chat", requireAuth, async (req: any, res) => {
       }
     }
 
-    // 👇 INTERCEPT THE KEYWORD
+    // Intercept the booking keyword
     const isReadyToBook = aiResponse.includes("[READY_TO_BOOK]");
-    
-    // Clean the keyword out of the text so the homeowner doesn't see robot code
     const cleanResponse = aiResponse.replace("[READY_TO_BOOK]", "I have all the details I need! Please select a time on the calendar below for our inspector to come out.");
 
+    // 2. Save Sarah's AI response to the database
     await prisma.message.create({
       data: { leadId: id, sender: "sarah", text: cleanResponse }
     });
 
-    // If she triggered the booking, update the status to unlock the Field App!
+    // 3. Text Sarah's response to the homeowner from your Twilio Number
+    try {
+      await twilioClient.messages.create({
+        body: cleanResponse,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: lead.homeownerPhone
+      });
+      console.log(`[Twilio] Sent Sarah SMS to ${lead.homeownerPhone}`);
+    } catch (smsError) {
+      console.error("[Twilio Error - Sarah SMS]:", smsError);
+    }
+
+    // 4. If she triggered the booking, update the status
     const newStatus = isReadyToBook ? "qualified" : lead.status;
     if (newStatus !== lead.status) {
       await prisma.lead.update({ where: { id }, data: { status: newStatus } });
     }
 
+    // 5. Return the updated chat
     const updatedLead = await prisma.lead.findUnique({
       where: { id },
       include: { messages: { orderBy: { timestamp: "asc" } } }

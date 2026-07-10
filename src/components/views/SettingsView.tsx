@@ -8,24 +8,15 @@ interface SettingsViewProps {
 }
 
 export default function SettingsView({ company, setCompany, currentUser }: SettingsViewProps) {
-  // NEW: Grab the backend URL from Vercel's environment variables
   const API_URL = import.meta.env.VITE_API_URL || "";
 
   const [activeTab, setActiveTab] = useState<"general" | "team" | "email" | "integrations">("general");
 
-  // Company Profile State
   const [settingsCompanyName, setSettingsCompanyName] = useState("");
   const [settingsPhone, setSettingsPhone] = useState("");
   const [settingsAddress, setSettingsAddress] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
 
-  // Email Config State
-  const [smtpHost, setSmtpHost] = useState("");
-  const [smtpUser, setSmtpUser] = useState("");
-  const [smtpPass, setSmtpPass] = useState("");
-  const [fromEmail, setFromEmail] = useState("");
-
-  // Team State
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [newEmpEmail, setNewEmpEmail] = useState("");
   const [newEmpPassword, setNewEmpPassword] = useState("");
@@ -33,6 +24,15 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [passwordResetId, setPasswordResetId] = useState<string | null>(null);
   const [newPasswordInput, setNewPasswordInput] = useState("");
+
+  // 👈 NEW: Helper to generate auth headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("stratis_token");
+    return {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    };
+  };
 
   useEffect(() => {
     if (company) {
@@ -45,8 +45,7 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
 
   const fetchTeamMembers = async () => {
     try {
-      // FIXED FETCH
-      const res = await fetch(`${API_URL}/api/tenant/users`);
+      const res = await fetch(`${API_URL}/api/tenant/users`, { headers: getAuthHeaders() });
       if (res.ok) {
         setTeamMembers(await res.json());
       } else {
@@ -61,10 +60,9 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
     e.preventDefault();
     setSettingsSaving(true);
     try {
-      // FIXED FETCH
       const res = await fetch(`${API_URL}/api/tenant/settings`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ companyName: settingsCompanyName, twilioPhoneNumber: settingsPhone, physicalAddress: settingsAddress })
       });
       if (res.ok) setCompany(await res.json());
@@ -79,10 +77,9 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
     setIsAddingUser(true);
     
     try {
-      // FIXED FETCH
       const res = await fetch(`${API_URL}/api/tenant/users`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ email: newEmpEmail, password: newEmpPassword, role: newEmpRole })
       });
       
@@ -105,20 +102,18 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
     setTeamMembers(teamMembers.map(m => m.id === userId ? { ...m, role: newRole } : m));
-    // FIXED FETCH
     await fetch(`${API_URL}/api/tenant/users/${userId}/role`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ role: newRole })
     });
   };
 
   const handleResetPassword = async (userId: string) => {
     if (!newPasswordInput) return;
-    // FIXED FETCH
     await fetch(`${API_URL}/api/tenant/users/${userId}/password`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ newPassword: newPasswordInput })
     });
     setPasswordResetId(null);
@@ -129,8 +124,10 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
   const handleRemoveEmployee = async (userId: string) => {
     if(!window.confirm("Are you sure you want to revoke access for this employee?")) return;
     setTeamMembers(teamMembers.filter(m => m.id !== userId));
-    // FIXED FETCH
-    await fetch(`${API_URL}/api/tenant/users/${userId}`, { method: "DELETE" });
+    await fetch(`${API_URL}/api/tenant/users/${userId}`, { 
+      method: "DELETE",
+      headers: getAuthHeaders() 
+    });
   };
 
   return (
@@ -189,7 +186,7 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
         </div>
       )}
 
-      {/* Tab 3: Integrations (MOVED INSIDE) */}
+      {/* Tab 3: Integrations */}
       {activeTab === "integrations" && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm max-w-2xl">
           <div className="mb-6 border-b border-slate-100 pb-4">
@@ -238,7 +235,6 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
                   <tr key={member.id} className="hover:bg-slate-50 transition-colors">
                     <td className="py-4 px-4 font-bold text-slate-800">{member.email}</td>
                     
-                    {/* Live Role Manager */}
                     <td className="py-4 px-4">
                       <select 
                         value={member.role}
@@ -253,7 +249,6 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
                       </select>
                     </td>
 
-                    {/* Action Buttons */}
                     <td className="py-4 px-4 text-right">
                       {member.id !== currentUser?.id && (
                         <div className="flex justify-end gap-2 items-center">
@@ -296,7 +291,6 @@ export default function SettingsView({ company, setCompany, currentUser }: Setti
             </table>
           </div>
 
-          {/* Provisioning Form */}
           <div className="xl:col-span-4 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm h-fit border-t-4 border-t-blue-500">
             <div className="flex items-center gap-2 mb-4">
               <UserPlus className="w-5 h-5 text-blue-600" />

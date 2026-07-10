@@ -135,9 +135,9 @@ export default function ChatView({
                   type="text"
                   value={homeownerInput}
                   onChange={(e) => setHomeownerInput(e.target.value)}
-                  placeholder={isBotActive ? "Send message as homeowner (Demo)..." : "Type reply as Company Support..."}
-                  className={`flex-1 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 ${isBotActive ? 'focus:ring-slate-400 bg-slate-50' : 'focus:ring-amber-500 bg-amber-50'}`}
-                />
+                  placeholder="Type a message to send via SMS..."
+                  className="flex-1 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 bg-slate-50"
+/>
                 <button
                   type="submit"
                   disabled={!homeownerInput.trim() || chatLoading}

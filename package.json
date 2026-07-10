@@ -35,6 +35,7 @@
     "react-dom": "^19.0.1",
     "speakeasy": "^2.0.0",
     "stripe": "^22.2.2",
+    "twilio": "^6.0.2",
     "vite": "^6.2.3",
     "winston": "^3.19.0"
   },
