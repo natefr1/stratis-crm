@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, MessageSquare, DollarSign, Settings, ShieldCheck, Users, LogOut } from 'lucide-react';
+import { Layers, MessageSquare, DollarSign, Settings, ShieldCheck, Users, LogOut, UserPlus } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -49,52 +49,26 @@ export default function Sidebar({
           <MessageSquare className="w-4 h-4" /> <span>Live AI Chats & Booking</span>
         </button>
 
-        {/* IPAD APP - Visible to everyone */}
+        <button 
+          onClick={() => setActiveTab("add-lead")} 
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            activeTab === "add-lead" 
+              ? "bg-blue-600 text-white shadow-md" 
+              : "text-slate-400 hover:bg-slate-800"
+          }`}
+        >
+          <UserPlus className="w-4 h-4" /> <span>Add Lead</span>
+        </button>
+
+        {/* IPAD APP */}
         <button onClick={() => setActiveTab("inspector")} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all mt-4 mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-900/50 hover:shadow-lg hover:scale-[1.02]`}>
           <span>🚀 Launch iPad Field App</span>
         </button>
 
-        {/* --- COMPANY ADMIN ONLY TABS --- */}
+        {/* COMPANY ADMIN ONLY TABS */}
         {isCompanyAdmin && (
           <div className="pt-2 mt-2 space-y-1">
             <button onClick={() => setActiveTab("billing")} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "billing" ? "bg-blue-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-800"}`}>
               <DollarSign className="w-4 h-4" /> <span>Invoices & Payments</span>
             </button>
-            <button onClick={() => setActiveTab("settings")} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "settings" ? "bg-blue-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-800"}`}>
-              <Settings className="w-4 h-4" /> <span>Company Settings</span>
-            </button>
-          </div>
-        )}
-
-        {/* --- SUPER ADMIN ONLY TABS --- */}
-        {isSuperAdmin && (
-          <div className="pt-4 mt-4 border-t border-slate-800">
-            <button onClick={() => setActiveTab("admin")} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "admin" ? "bg-emerald-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-800"}`}>
-              <ShieldCheck className="w-4 h-4 text-emerald-400" /> <span>Stratis Super-Admin</span>
-            </button>
-            <button onClick={() => setActiveTab("admin-users")} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "admin-users" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400 hover:bg-slate-800"}`}>
-              <Users className="w-4 h-4 text-indigo-400" /> <span>Global Credentials</span>
-            </button>
-          </div>
-        )}
-      </nav>
-
-      {/* --- LOGOUT BUTTON & USER PROFILE --- */}
-      <div className="p-4 border-t border-slate-800 bg-slate-900">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] text-slate-300 font-bold truncate max-w-[150px]">{currentUser?.email}</p>
-            <p className="text-[9px] text-slate-500 uppercase tracking-widest">{role.replace("_", " ")}</p>
-          </div>
-          <button 
-            onClick={handleLogout}
-            className="flex items-center justify-center p-2 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-            title="Log Out"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </aside>
-  );
-}
+            <button onClick={() => setActive

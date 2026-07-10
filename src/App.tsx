@@ -10,6 +10,7 @@ import SettingsView from "./components/views/SettingsView";
 import AdminView from "./components/views/AdminView";
 import AdminCredentials from "./components/AdminCredentials"; 
 import InspectorView from "./components/views/InspectorView";
+import LeadEntryView from "./components/views/LeadEntryView"; // 👈 NEW IMPORT
 
 // Types
 import { Lead, RoofingCompany, Transaction, DashboardStats, AdminDashboardStats } from "./types";
@@ -27,8 +28,8 @@ export default function App() {
   const [adminIsLoggedIn, setAdminIsLoggedIn] = useState<boolean>(false); 
   const [showAdminLoginModal, setShowAdminLoginModal] = useState<boolean>(false);
   
-  // Navigation State
-  const [activeTab, setActiveTab] = useState<"dashboard" | "conversations" | "billing" | "blueprint" | "admin" | "admin-users" | "settings" | "inspector">("dashboard");
+  // Navigation State (Added "add-lead")
+  const [activeTab, setActiveTab] = useState<"dashboard" | "conversations" | "add-lead" | "billing" | "blueprint" | "admin" | "admin-users" | "settings" | "inspector">("dashboard");
 
   // Core App State
   const [company, setCompany] = useState<RoofingCompany | null>(null);
@@ -89,7 +90,6 @@ export default function App() {
     }
   };
 
-  // --- MISSING ADMIN FETCH RESTORED ---
   const fetchAdminData = async () => {
     try {
       const headers = { "x-admin-role": adminRole };
@@ -103,16 +103,14 @@ export default function App() {
     }
   };
 
-const checkAuth = async () => {
+  const checkAuth = async () => {
     try {
-      // Grab the token from storage
       const token = localStorage.getItem("stratis_token");
       if (!token) {
         setIsAuthenticated(false);
         return;
       }
 
-      // Send the token in the Headers
       const res = await fetch(`${API_URL}/api/auth/me`, {
         headers: {
           "Authorization": `Bearer ${token}`
@@ -143,6 +141,7 @@ const checkAuth = async () => {
   const handleLogout = async () => {
     try {
       await fetch(`${API_URL}/api/auth/logout`, { method: 'POST' });
+      localStorage.removeItem("stratis_token"); // Clear token on logout
       setIsAuthenticated(false);
       setCurrentUser(null);
       setAdminRole("ROOFER_USER");
@@ -179,7 +178,6 @@ const checkAuth = async () => {
     return <AuthView onLogin={checkAuth} />;
   }
 
-  // --- MISSING CASHOUT OVERRIDE RESTORED ---
   const executeCashoutOverride = async () => {
     try {
       const res = await fetch(`${API_URL}/admin/cashout`, {
@@ -200,7 +198,43 @@ const checkAuth = async () => {
     }
   };
 
-  // Action Handlers
+  // 👈 NEW: Handler for the Full Lead Entry Page
+  const handleFullLeadEntry = async (leadData: any) => {
+    try {
+      const res = await fetch(`${API_URL}/api/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          homeownerName: leadData.homeownerName,
+          homeownerPhone: leadData.homeownerPhone,
+          homeownerChannel: "web",
+          neighborhood: leadData.address,
+          status: "new",
+        }),
+      });
+
+      if (res.ok) {
+        const created = await res.json();
+        
+        // Add the extra context (roof age, insurance, etc) as an initial internal note or chat message
+        const initialNote = `[INTERNAL NOTE] Manual Lead created. Address: ${leadData.address} | Roof Age: ${leadData.roofAge || 'N/A'} | Insurance: ${leadData.insuranceCompany || 'N/A'} | Damage Notes: ${leadData.damageNotes}`;
+        await fetch(`${API_URL}/api/leads/${created.id}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: initialNote }),
+        });
+
+        await fetchData();
+        setSelectedLeadId(created.id);
+        setActiveTab("conversations"); // Jump to chat
+        setWebhookLog(`[Manual Entry] Lead profile created for ${created.homeownerName}`);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Original mini-dashboard manual entry
   const handleManualLeadEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newHomeownerName.trim() || !newHomeownerMsg.trim()) return;
@@ -244,7 +278,7 @@ const checkAuth = async () => {
     }
   };
 
-  const sendChatMessage = async (e?: React.FormEvent) => {
+  const sendChatMessage = async (e?: React.FormEvent, isHuman?: boolean) => {
     if (e) e.preventDefault();
     if (!homeownerInput.trim() || !selectedLeadId) return;
 
@@ -253,10 +287,11 @@ const checkAuth = async () => {
     setChatLoading(true);
 
     try {
+      // In a full implementation, you would pass the `isHuman` flag to the backend here so it stops triggering AI.
       const response = await fetch(`${API_URL}/api/leads/${selectedLeadId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: userText }),
+        body: JSON.stringify({ text: userText, isHuman }),
       });
 
       if (response.ok) {
@@ -312,11 +347,9 @@ const checkAuth = async () => {
     }
   };
 
-  // Main Render
   return (
     <div id="saas-container" className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans text-slate-900">
       
-      {/* IF INSPECTOR MODE IS ACTIVE, HIDE EVERYTHING AND SHOW ONLY THE IPAD APP */}
       {activeTab === "inspector" ? (
         <InspectorView 
           leads={leads} 
@@ -324,7 +357,6 @@ const checkAuth = async () => {
           setWebhookLog={setWebhookLog} 
         />
       ) : (
-        /* OTHERWISE, RENDER THE NORMAL DESKTOP ADMIN DASHBOARD */
         <>
           <div className="flex-1 flex flex-col md:flex-row min-h-screen">
             <Sidebar 
@@ -361,6 +393,11 @@ const checkAuth = async () => {
                     isCreatingInbound={isCreatingInbound}
                     webhookLog={webhookLog}
                   />
+                )}
+
+                {/* 👈 NEW: Lead Entry Tab */}
+                {activeTab === "add-lead" && (
+                  <LeadEntryView onLeadCreate={handleFullLeadEntry} />
                 )}
 
                 {activeTab === "conversations" && (
