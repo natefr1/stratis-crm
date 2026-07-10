@@ -10,25 +10,21 @@ import SettingsView from "./components/views/SettingsView";
 import AdminView from "./components/views/AdminView";
 import AdminCredentials from "./components/AdminCredentials"; 
 import InspectorView from "./components/views/InspectorView";
-import LeadEntryView from "./components/views/LeadEntryView"; // 👈 NEW IMPORT
+import LeadEntryView from "./components/views/LeadEntryView"; 
 
 // Types
 import { Lead, RoofingCompany, Transaction, DashboardStats, AdminDashboardStats } from "./types";
 
 export default function App() {
-  // Global API URL for all fetch calls
   const API_URL = import.meta.env.VITE_API_URL || "";
 
   // Auth State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  
-  // Real Database Security Checks
   const [adminRole, setAdminRole] = useState<string>("ROOFER_USER"); 
   const [adminIsLoggedIn, setAdminIsLoggedIn] = useState<boolean>(false); 
-  const [showAdminLoginModal, setShowAdminLoginModal] = useState<boolean>(false);
   
-  // Navigation State (Added "add-lead")
+  // Navigation State
   const [activeTab, setActiveTab] = useState<"dashboard" | "conversations" | "add-lead" | "billing" | "blueprint" | "admin" | "admin-users" | "settings" | "inspector">("dashboard");
 
   // Core App State
@@ -37,7 +33,7 @@ export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
 
-  // --- MISSING ADMIN STATES RESTORED ---
+  // Admin States
   const [adminStats, setAdminStats] = useState<AdminDashboardStats | null>(null);
   const [adminLogs, setAdminLogs] = useState<any[]>([]);
   const [cashoutAmount, setCashoutAmount] = useState<string>("");
@@ -51,39 +47,45 @@ export default function App() {
   const [selectedLeadId, setSelectedLeadId] = useState<string>("");
   const [homeownerInput, setHomeownerInput] = useState<string>("");
   const [chatLoading, setChatLoading] = useState<boolean>(false);
-  
-  // Scheduling State
   const [selectedBookingTime, setSelectedBookingTime] = useState<string>("");
   const [bookingFinished, setBookingFinished] = useState<boolean>(false);
 
-  // Inbound Form State (For Dashboard)
+  // Inbound Form State
   const [newHomeownerName, setNewHomeownerName] = useState<string>("");
   const [newHomeownerPhone, setNewHomeownerPhone] = useState<string>("");
   const [newHomeownerChannel, setNewHomeownerChannel] = useState<"sms" | "instagram" | "web">("sms");
   const [newHomeownerNeighborhood, setNewHomeownerNeighborhood] = useState<string>("Memorial");
   const [newHomeownerMsg, setNewHomeownerMsg] = useState<string>("");
   const [isCreatingInbound, setIsCreatingInbound] = useState<boolean>(false);
-
-  // System Logs
   const [webhookLog, setWebhookLog] = useState<string>("Waiting for system event...");
+
+  // 👈 NEW: Helper to generate auth headers for every request
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("stratis_token");
+    return {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    };
+  };
 
   // Data Fetching
   const fetchData = async () => {
     try {
-      const companyRes = await fetch(`${API_URL}/api/company`);
+      const headers = getAuthHeaders();
+      const companyRes = await fetch(`${API_URL}/api/company`, { headers });
       if (companyRes.ok) setCompany(await companyRes.json());
 
-      const leadsRes = await fetch(`${API_URL}/api/leads`);
+      const leadsRes = await fetch(`${API_URL}/api/leads`, { headers });
       if (leadsRes.ok) {
         const data = await leadsRes.json();
         setLeads(data);
         if (data.length > 0 && !selectedLeadId) setSelectedLeadId(data[0].id);
       }
 
-      const txRes = await fetch(`${API_URL}/api/transactions`);
+      const txRes = await fetch(`${API_URL}/api/transactions`, { headers });
       if (txRes.ok) setTransactions(await txRes.json());
 
-      const statsRes = await fetch(`${API_URL}/api/stats`);
+      const statsRes = await fetch(`${API_URL}/api/stats`, { headers });
       if (statsRes.ok) setStats(await statsRes.json());
     } catch (err) {
       console.error("Error retrieving dashboard state:", err);
@@ -92,7 +94,7 @@ export default function App() {
 
   const fetchAdminData = async () => {
     try {
-      const headers = { "x-admin-role": adminRole };
+      const headers = { ...getAuthHeaders(), "x-admin-role": adminRole };
       const adminRes = await fetch(`${API_URL}/admin/dashboard-stats`, { headers });
       if (adminRes.ok) setAdminStats(await adminRes.json());
 
@@ -112,9 +114,7 @@ export default function App() {
       }
 
       const res = await fetch(`${API_URL}/api/auth/me`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+        headers: { "Authorization": `Bearer ${token}` }
       });
       
       if (res.ok) {
@@ -141,7 +141,7 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await fetch(`${API_URL}/api/auth/logout`, { method: 'POST' });
-      localStorage.removeItem("stratis_token"); // Clear token on logout
+      localStorage.removeItem("stratis_token");
       setIsAuthenticated(false);
       setCurrentUser(null);
       setAdminRole("ROOFER_USER");
@@ -150,7 +150,6 @@ export default function App() {
     }
   };
 
-  // React Hooks
   useEffect(() => {
     checkAuth();
   }, []);
@@ -173,7 +172,6 @@ export default function App() {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedLead?.transcript, chatLoading]);
 
-  // Auth Guard
   if (!isAuthenticated) {
     return <AuthView onLogin={checkAuth} />;
   }
@@ -182,10 +180,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_URL}/admin/cashout`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-role": adminRole
-        },
+        headers: { ...getAuthHeaders(), "x-admin-role": adminRole },
         body: JSON.stringify({ amount: 1, totpToken: '000000' })
       });
       const result = await res.json();
@@ -198,12 +193,11 @@ export default function App() {
     }
   };
 
-  // 👈 NEW: Handler for the Full Lead Entry Page
   const handleFullLeadEntry = async (leadData: any) => {
     try {
       const res = await fetch(`${API_URL}/api/leads`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           homeownerName: leadData.homeownerName,
           homeownerPhone: leadData.homeownerPhone,
@@ -215,18 +209,17 @@ export default function App() {
 
       if (res.ok) {
         const created = await res.json();
-        
-        // Add the extra context (roof age, insurance, etc) as an initial internal note or chat message
         const initialNote = `[INTERNAL NOTE] Manual Lead created. Address: ${leadData.address} | Roof Age: ${leadData.roofAge || 'N/A'} | Insurance: ${leadData.insuranceCompany || 'N/A'} | Damage Notes: ${leadData.damageNotes}`;
+        
         await fetch(`${API_URL}/api/leads/${created.id}/chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ text: initialNote }),
         });
 
         await fetchData();
         setSelectedLeadId(created.id);
-        setActiveTab("conversations"); // Jump to chat
+        setActiveTab("conversations");
         setWebhookLog(`[Manual Entry] Lead profile created for ${created.homeownerName}`);
       }
     } catch (err) {
@@ -234,7 +227,6 @@ export default function App() {
     }
   };
 
-  // Original mini-dashboard manual entry
   const handleManualLeadEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newHomeownerName.trim() || !newHomeownerMsg.trim()) return;
@@ -243,7 +235,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_URL}/api/leads`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           homeownerName: newHomeownerName,
           homeownerPhone: newHomeownerPhone || "+1 (832) 555-8899",
@@ -257,7 +249,7 @@ export default function App() {
         const created = await res.json();
         const chatRes = await fetch(`${API_URL}/api/leads/${created.id}/chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ text: newHomeownerMsg }),
         });
 
@@ -287,10 +279,9 @@ export default function App() {
     setChatLoading(true);
 
     try {
-      // In a full implementation, you would pass the `isHuman` flag to the backend here so it stops triggering AI.
       const response = await fetch(`${API_URL}/api/leads/${selectedLeadId}/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ text: userText, isHuman }),
       });
 
@@ -315,7 +306,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_URL}/api/leads/${selectedLeadId}/status`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ status }),
       });
       if (res.ok) {
@@ -333,7 +324,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_URL}/api/leads/${selectedLeadId}/book`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ date: selectedBookingTime }),
       });
       if (res.ok) {
@@ -349,13 +340,8 @@ export default function App() {
 
   return (
     <div id="saas-container" className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans text-slate-900">
-      
       {activeTab === "inspector" ? (
-        <InspectorView 
-          leads={leads} 
-          setActiveTab={setActiveTab} 
-          setWebhookLog={setWebhookLog} 
-        />
+        <InspectorView leads={leads} setActiveTab={setActiveTab} setWebhookLog={setWebhookLog} />
       ) : (
         <>
           <div className="flex-1 flex flex-col md:flex-row min-h-screen">
@@ -395,7 +381,6 @@ export default function App() {
                   />
                 )}
 
-                {/* 👈 NEW: Lead Entry Tab */}
                 {activeTab === "add-lead" && (
                   <LeadEntryView onLeadCreate={handleFullLeadEntry} />
                 )}
@@ -431,11 +416,7 @@ export default function App() {
                 )}
 
                 {activeTab === "settings" && (
-                  <SettingsView 
-                    company={company} 
-                    setCompany={setCompany} 
-                    currentUser={currentUser}
-                  />
+                  <SettingsView company={company} setCompany={setCompany} currentUser={currentUser} />
                 )}
 
                 {activeTab === "admin" && (
@@ -457,16 +438,12 @@ export default function App() {
                   />
                 )}
 
-                {activeTab === "admin-users" && (
-                  <AdminCredentials />
-                )}
-
+                {activeTab === "admin-users" && <AdminCredentials />}
               </div>
             </main>
           </div>
         </>
       )}
-
     </div>
   );
 }
